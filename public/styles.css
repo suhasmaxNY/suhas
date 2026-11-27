@@ -116,3 +116,5 @@
  .ai-composer-bottom span{font-size:8px}
  .ai-composer-bottom button{width:32px;height:32px}
 }
+
+.install-app-btn{border:1px solid #ffffff99;background:#fff;color:#d94d08;border-radius:18px;padding:5px 11px;font-size:10px;font-weight:800;white-space:nowrap;cursor:pointer}.install-app-btn[hidden]{display:none}@media(max-width:600px){.announcement{gap:7px}.announcement>span:nth-child(2){display:none}.install-app-btn{font-size:9px;padding:5px 8px}}
