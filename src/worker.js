@@ -1,7 +1,7 @@
 /**
- * SUHAS.COM edge API foundation.
- * Secrets are configured with: wrangler secret put SUPABASE_URL
- * and: wrangler secret put SUPABASE_ANON_KEY
+ * SUHAS.COM Cloudflare Worker API.
+ * Configure SUPABASE_URL and SUPABASE_ANON_KEY as encrypted Worker secrets.
+ * Public catalogue reads use the anon key and remain constrained by Supabase RLS.
  */
 const json = (data, status = 200) => new Response(JSON.stringify(data), {
   status,
@@ -25,11 +25,36 @@ export default {
       });
     }
 
-    if (url.pathname.startsWith("/api/")) {
+    if (url.pathname === "/api/products" && request.method === "GET") {
       if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) {
         return json({ error: "Backend is not configured yet." }, 503);
       }
-      // API routes will be added with authenticated Supabase access.
+      const endpoint = new URL("/rest/v1/products", env.SUPABASE_URL);
+      endpoint.search = new URLSearchParams({
+        select: "id,name_en,name_bn,slug,price_bdt,image_url,category_id",
+        status: "eq.active",
+        order: "created_at.desc",
+        limit: "40"
+      }).toString();
+      const upstream = await fetch(endpoint, {
+        headers: {
+          apikey: env.SUPABASE_ANON_KEY,
+          authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+          accept: "application/json"
+        }
+      });
+      const body = await upstream.text();
+      return new Response(body, {
+        status: upstream.status,
+        headers: {
+          "content-type": upstream.headers.get("content-type") || "application/json",
+          "cache-control": "public, max-age=30",
+          "x-content-type-options": "nosniff"
+        }
+      });
+    }
+
+    if (url.pathname.startsWith("/api/")) {
       return json({ error: "API route not implemented yet." }, 501);
     }
 
