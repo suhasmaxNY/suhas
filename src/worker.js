@@ -7,7 +7,7 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
 
-    const cors={"access-control-allow-origin":"https://suhasny.pages.dev","access-control-allow-methods":"GET,POST,OPTIONS","access-control-allow-headers":"authorization,content-type,accept","vary":"Origin"};
+    const cors={"access-control-allow-origin":"https://suhasny.pages.dev","access-control-allow-methods":"GET,POST,PATCH,OPTIONS","access-control-allow-headers":"authorization,content-type,accept","vary":"Origin"};
     const apiReply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{"content-type":"application/json; charset=utf-8","cache-control":"no-store",...cors}});
     if(request.method==="OPTIONS" && url.pathname.startsWith("/api/")) return new Response(null,{status:204,headers:{...cors,"access-control-max-age":"86400"}});
     if(url.pathname.startsWith("/api/") && (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY)) return apiReply({error:"Supabase is not configured. Add SUPABASE_ANON_KEY as a Worker secret."},503);
