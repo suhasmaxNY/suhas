@@ -64,7 +64,45 @@ function editSellerProduct(id,rows){const p=rows.find(x=>x.id===id);if(!p)return
 $("#sellerCancelEdit").onclick=()=>{const f=$("#sellerProductForm");f.reset();f.elements.product_id.value="";$("#sellerImagePreview").innerHTML="";$("#sellerImagePreview").hidden=true;$("#sellerImageUploadStatus").textContent="";f.querySelector('button[type="submit"]').textContent="Save Product — Go Live";$("#sellerCancelEdit").hidden=true};
 $("#sellerApplyForm").addEventListener("submit",async e=>{e.preventDefault();if(!authSession?.access_token){$("#accountOverlay").hidden=false;return}const f=new FormData(e.currentTarget);try{await api("/api/seller/apply",{method:"POST",body:JSON.stringify({store_name:f.get("store_name"),whatsapp_number:f.get("whatsapp_number"),description:f.get("description")})});$("#sellerStatus").textContent="Your seller application was submitted. SUHAS admin review is required before products can go live.";$("#sellerApplyPanel").hidden=true;showToast("Seller application submitted")}catch(err){$("#sellerStatus").textContent=err.message}});
 $("#sellerImageFile").addEventListener("change",()=>{const files=[...$("#sellerImageFile").files],wrap=$("#sellerImagePreview");if(files.length>8){$("#sellerImageUploadStatus").textContent="You can select up to 8 product photos.";$("#sellerImageFile").value="";wrap.hidden=true;return}if(files.some(file=>!["image/jpeg","image/png","image/webp","image/gif"].includes(file.type)||file.size>5*1024*1024)){$("#sellerImageUploadStatus").textContent="Each photo must be JPG, PNG, WEBP or GIF under 5 MB.";$("#sellerImageFile").value="";wrap.hidden=true;return}wrap.innerHTML=files.map(file=>'<img src="'+URL.createObjectURL(file)+'" alt="Selected product photo">').join("");wrap.hidden=!files.length;$("#sellerImageUploadStatus").textContent=files.length?files.length+" photo(s) selected. They upload when you save.":"No new photos selected."});
-$("#sellerProductForm").addEventListener("submit",async e=>{e.preventDefault();const f=e.currentTarget,d=new FormData(f),editId=d.get("product_id"),seller=window.suhasSeller;if(!seller)return;if(seller.status!=="approved"){showToast("Seller approval is required before publishing.");return}const saveButton=f.querySelector('button[type="submit"]');saveButton.disabled=true;saveButton.textContent="Uploading & publishing…";try{const imageUrls=[];const files=[...$("#sellerImageFile").files];for(let i=0;i<files.length;i++){const uploadData=new FormData();uploadData.append("file",files[i]);$("#sellerImageUploadStatus").textContent="Uploading photo "+(i+1)+" of "+files.length+"…";const upload=await fetch(API_BASE+"/api/seller/upload",{method:"POST",headers:{authorization:"Bearer "+authSession.access_token},body:uploadData});const uploaded=await upload.json().catch(()=>({}));if(!upload.ok)throw Error(uploaded.error||"Product photo upload failed.");imageUrls.push(uploaded.image_url)}const imageUrl=d.get("image_url")||imageUrls[0]||null;const payload={seller_id:seller.id,name_en:d.get("name_en").trim(),name_bn:d.get("name_bn").trim()||null,category_id:d.get("category_id"),price_bdt:Number(d.get("price_bdt")),stock_quantity:Number(d.get("stock_quantity")),image_url:imageUrl,image_urls:imageUrls.length?imageUrls:(editId?undefined:[]),description:d.get("description").trim(),status:"active"};if(editId)await api("/api/seller/products/"+editId,{method:"PATCH",body:JSON.stringify(payload)});else await api("/api/seller/products",{method:"POST",body:JSON.stringify(payload)});f.reset();f.elements.product_id.value="";$("#sellerImagePreview").innerHTML="";$("#sellerImagePreview").hidden=true;$("#sellerImageUploadStatus").textContent="";$("#sellerCancelEdit").hidden=true;await loadSellerProducts();await loadProducts();showToast("Product published live on SUHAS!")}catch(err){$("#sellerStatus").textContent=err.message;$("#sellerImageUploadStatus").textContent=err.message}finally{saveButton.disabled=false;saveButton.textContent="Save Product — Go Live"}});
+$("#sellerProductForm").addEventListener("submit",async e=>{
+ e.preventDefault();
+ const f=e.currentTarget,d=new FormData(f),editId=String(d.get("product_id")||""),seller=window.suhasSeller;
+ const status=$("#sellerSaveStatus"),saveButton=f.querySelector('button[type="submit"]');
+ if(!seller){status.textContent="Seller account could not be loaded. Close Seller Studio and open it again.";return}
+ if(seller.status!=="approved"){status.textContent="Your seller account is not approved yet. Admin approval is required.";return}
+ const name=String(d.get("name_en")||"").trim(),category=String(d.get("category_id")||""),price=Number(d.get("price_bdt")),stock=Number(d.get("stock_quantity")),description=String(d.get("description")||"").trim();
+ if(name.length<2||!category||!Number.isFinite(price)||price<1||!Number.isInteger(stock)||stock<0||description.length<10){status.textContent="Please complete product name, category, valid price, stock and a description of at least 10 characters.";return}
+ saveButton.disabled=true;saveButton.textContent="Uploading & publishing…";status.textContent="Preparing your product…";
+ // Close the Android keyboard so the progress and result stay visible.
+ if(document.activeElement&&f.contains(document.activeElement))document.activeElement.blur();
+ try{
+  const imageUrls=[],files=[...$("#sellerImageFile").files];
+  for(let i=0;i<files.length;i++){
+   const uploadData=new FormData();uploadData.append("file",files[i]);$("#sellerImageUploadStatus").textContent="Uploading photo "+(i+1)+" of "+files.length+"…";status.textContent="Uploading product photo "+(i+1)+" of "+files.length+"…";
+   const upload=await fetch(API_BASE+"/api/seller/upload",{method:"POST",headers:{authorization:"Bearer "+authSession.access_token},body:uploadData});
+   const uploaded=await upload.json().catch(()=>({}));
+   if(!upload.ok)throw Error(uploaded.error||uploaded.message||"Photo upload failed (HTTP "+upload.status+").");
+   if(!uploaded.image_url)throw Error("Photo upload completed but the server did not return an image URL.");
+   imageUrls.push(uploaded.image_url);
+  }
+  const imageUrl=String(d.get("image_url")||"").trim()||imageUrls[0]||null;
+  const payload={name_en:name,name_bn:String(d.get("name_bn")||"").trim()||null,category_id:category,price_bdt:price,stock_quantity:stock,image_url:imageUrl,image_urls:imageUrls.length?imageUrls:(editId?undefined:(imageUrl?[imageUrl]:[])),description,status:"active"};
+  status.textContent="Saving product to SUHAS…";
+  const saved=editId?await api("/api/seller/products/"+editId,{method:"PATCH",body:JSON.stringify(payload)}):await api("/api/seller/products",{method:"POST",body:JSON.stringify(payload)});
+  if(!saved||!Array.isArray(saved)||saved.length===0)throw Error("The server did not confirm that the product was saved. Please retry.");
+  f.reset();f.elements.product_id.value="";$("#sellerImagePreview").innerHTML="";$("#sellerImagePreview").hidden=true;$("#sellerImageUploadStatus").textContent="";$("#sellerCancelEdit").hidden=true;
+  await loadSellerProducts();await loadProducts();
+  status.textContent="✓ Product published successfully and added to your listings.";
+  showToast("Product published live on SUHAS!");
+ }catch(err){
+  status.textContent="Could not publish: "+(err.message||"Unknown error");
+  $("#sellerStatus").textContent="Product publishing failed. See the message below the Save Product button.";
+  $("#sellerImageUploadStatus").textContent=err.message||"Please try again.";
+ }finally{
+  saveButton.disabled=false;saveButton.textContent="Save Product — Go Live";
+  status.scrollIntoView({behavior:"smooth",block:"nearest"});
+ }
+});
 let aiChats=readStore("suhas-ai-chats",[]);
 let currentAiChatId=aiChats[0]?.id||null;
 let supportConversationId=null,supportPoll=null,isAdminSupport=false;
