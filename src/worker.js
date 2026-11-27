@@ -149,7 +149,8 @@ export default {
       const marketContext="SUHAS is a Bangladesh-focused multi-vendor marketplace. Buyers can browse listed products, contact the product's own seller using the seller's WhatsApp contact, share product links, and place COD orders when checkout is enabled. Seller applications are reviewed; pending sellers cannot publish active listings. Never claim a feature is active unless stated here. Never invent prices, stock, seller contacts or product URLs. For product questions, use only the catalogue records below and provide /?product=SLUG links. If no matching product exists, say so. For general questions, answer helpfully but state uncertainty and avoid pretending to know private account/order information.\nCATALOGUE: "+JSON.stringify(matches.map(p=>({name:p.name_en,bn:p.name_bn,description:p.description,price_bdt:p.price_bdt,slug:p.slug,seller:p.seller?.store_name})));
       if(env.AI?.run){
         try {
-          const history=Array.isArray(b?.history)?b.history.filter(m=>m&&["user","assistant"].includes(m.role)&&typeof m.content==="string").slice(-10).map(m=>({role:m.role,content:m.content.slice(0,1200)})):[];\n          const out=await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast",{messages:[{role:"system",content:marketContext},...history,{role:"user",content:question}],max_tokens:650});
+          const history=Array.isArray(b?.history)?b.history.filter(m=>m&&["user","assistant"].includes(m.role)&&typeof m.content==="string").slice(-10).map(m=>({role:m.role,content:m.content.slice(0,1200)})):[];
+          const out=await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast",{messages:[{role:"system",content:marketContext},...history,{role:"user",content:question}],max_tokens:650});
           const answer=out?.response||out?.output_text;
           if(answer) return apiReply({answer,products:matches.map(p=>({name:p.name_en,price_bdt:p.price_bdt,slug:p.slug}))});
         } catch(error) {
