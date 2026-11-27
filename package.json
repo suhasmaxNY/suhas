@@ -1,0 +1,14 @@
+{
+  "name": "suhas-marketplace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bangladesh-first SUHAS.COM multi-vendor marketplace foundation",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "wrangler deploy --dry-run"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}
