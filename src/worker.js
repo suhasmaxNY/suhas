@@ -209,7 +209,7 @@ export default {
         const number=url.searchParams.get("number");
         if(!number || !/^SH-[A-Z0-9]{10}$/.test(number)) return apiReply({error:"Enter a valid SUHAS order number."},400);
         const u=new URL(env.SUPABASE_URL+"/rest/v1/orders");
-        u.search=new URLSearchParams({select:"order_number,status,payment_status,payment_method,subtotal_bdt,delivery_fee_bdt,total_bdt,created_at",order_number:"eq."+number,limit:"1"}).toString();
+        u.search=new URLSearchParams({select:"order_number,status,payment_status,payment_method,payment_channel,subtotal_bdt,discount_bdt,delivery_fee_bdt,total_bdt,created_at",order_number:"eq."+number,limit:"1"}).toString();
         const r=await fetch(u,{headers});const rows=await r.json().catch(()=>[]);
         return apiReply(Array.isArray(rows)&&rows.length?rows[0]:{error:"Order not found for this account."},Array.isArray(rows)&&rows.length?200:404);
       }
