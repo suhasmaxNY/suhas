@@ -85,8 +85,18 @@ export default {
       if(question.length<2)return apiReply({error:"Please enter a question."},400);
       const endpoint=new URL("/rest/v1/products",env.SUPABASE_URL);
       endpoint.search=new URLSearchParams({select:"id,name_en,name_bn,description,price_bdt,slug,image_url,seller:sellers(store_name,whatsapp_number)",status:"eq.active",order:"created_at.desc",limit:"40"}).toString();
-      const pr=await fetch(endpoint,{headers:{apikey:env.SUPABASE_ANON_KEY,authorization:"Bearer "+env.SUPABASE_ANON_KEY,accept:"application/json"}});
-      const catalogue=await pr.json().catch(()=>[]);
+      let catalogue=[];
+      try {
+        const pr=await fetch(endpoint,{headers:{apikey:env.SUPABASE_ANON_KEY,authorization:"Bearer "+env.SUPABASE_ANON_KEY,accept:"application/json"}});
+        if(pr.ok){
+          const rows=await pr.json().catch(()=>[]);
+          if(Array.isArray(rows)) catalogue=rows;
+        } else {
+          console.error("SUHAS catalogue request failed:",pr.status,await pr.text());
+        }
+      } catch(error) {
+        console.error("SUHAS catalogue network error:",error?.message||String(error));
+      }
       const words=question.toLowerCase().split(/[^a-z0-9\u0980-\u09ff]+/).filter(x=>x.length>2);
       const matches=(Array.isArray(catalogue)?catalogue:[]).map(p=>({...p,score:words.filter(word=>(p.name_en+" "+(p.name_bn||"")+" "+(p.description||"")).toLowerCase().includes(word)).length})).filter(p=>p.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
       const marketContext="SUHAS is a Bangladesh-focused multi-vendor marketplace. Buyers can browse listed products, contact the product's own seller using the seller's WhatsApp contact, share product links, and place COD orders when checkout is enabled. Seller applications are reviewed; pending sellers cannot publish active listings. Never claim a feature is active unless stated here. Never invent prices, stock, seller contacts or product URLs. For product questions, use only the catalogue records below and provide /?product=SLUG links. If no matching product exists, say so. For general questions, answer helpfully but state uncertainty and avoid pretending to know private account/order information.\nCATALOGUE: "+JSON.stringify(matches.map(p=>({name:p.name_en,bn:p.name_bn,description:p.description,price_bdt:p.price_bdt,slug:p.slug,seller:p.seller?.store_name})));
