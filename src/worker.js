@@ -26,6 +26,13 @@ export default {
     }
     const bearer=request.headers.get("authorization")||"";
     const userHeaders={apikey:env.SUPABASE_ANON_KEY,authorization:bearer,"content-type":"application/json",accept:"application/json","prefer":"return=representation"};
+    if(url.pathname==="/api/admin/check" && request.method==="GET"){
+      if(!bearer.startsWith("Bearer ")) return apiReply({error:"Admin sign-in required."},401);
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/rpc/is_admin",{method:"POST",headers:userHeaders,body:"{}"});
+      if(!r.ok)return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+      const allowed=await r.json().catch(()=>false);
+      return apiReply({is_admin:allowed===true});
+    }
     if(url.pathname==="/api/admin/sellers" && request.method==="GET"){
       if(!bearer.startsWith("Bearer ")) return apiReply({error:"Admin sign-in required."},401);
       const r=await fetch(env.SUPABASE_URL+"/rest/v1/rpc/admin_list_seller_applications",{method:"POST",headers:userHeaders,body:"{}"});
