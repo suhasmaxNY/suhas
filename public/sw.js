@@ -1,7 +1,8 @@
-const CACHE="suhas-pwa-v5";
-const SHELL=["/","/ai/","/styles.css?v=20261127-chatui","/app.js?v=20261127-assistantpage","/ai/style.css?v=4","/ai/app.js?v=5","/manifest.webmanifest","/icon.svg"];
+const CACHE="suhas-pwa-v6";
+const SHELL=["/","/ai/","/styles.css?v=20261127-chatui","/app.js?v=20261127-assistantpage","/ai/style.css?v=4","/ai/app.js?v=6","/manifest.webmanifest","/icon.svg"];
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)))});
-self.addEventListener("message",event=>{if(event.data==="SUHAS_SKIP_WAITING")self.skipWaiting()});\nself.addEventListener("activate",event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
+self.addEventListener("message",event=>{if(event.data==="SUHAS_SKIP_WAITING")self.skipWaiting()});
+self.addEventListener("activate",event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
 self.addEventListener("fetch",event=>{
  const req=event.request,url=new URL(req.url);
  if(req.method!=="GET"||url.origin!==self.location.origin||url.pathname.startsWith("/api/"))return;
