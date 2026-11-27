@@ -35,13 +35,22 @@ export default {
     }
     if(url.pathname==="/api/seller/me" && request.method==="GET"){
       if(!bearer.startsWith("Bearer ")) return apiReply({error:"Sign in first."},401);
-      const r=await fetch(env.SUPABASE_URL+"/rest/v1/sellers?select=id,store_name,slug,description,status,whatsapp_number,support_email,created_at&limit=1",{headers:userHeaders});
+      const me=await fetch(env.SUPABASE_URL+"/auth/v1/user",{headers:{apikey:env.SUPABASE_ANON_KEY,authorization:bearer}});
+      if(!me.ok)return apiReply({error:"Your session has expired. Sign in again."},401);
+      const user=await me.json();
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/sellers?select=id,store_name,slug,description,status,whatsapp_number,support_email,created_at&owner_id=eq."+encodeURIComponent(user.id)+"&limit=1",{headers:userHeaders});
       return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
     }
     if(url.pathname==="/api/seller/products" && (request.method==="GET"||request.method==="POST")){
       if(!bearer.startsWith("Bearer ")) return apiReply({error:"Sign in first."},401);
       if(request.method==="GET"){
-        const r=await fetch(env.SUPABASE_URL+"/rest/v1/products?select=id,name_en,name_bn,slug,description,price_bdt,stock_quantity,status,image_url,category_id&order=created_at.desc",{headers:userHeaders});
+        const me=await fetch(env.SUPABASE_URL+"/auth/v1/user",{headers:{apikey:env.SUPABASE_ANON_KEY,authorization:bearer}});
+        if(!me.ok)return apiReply({error:"Your session has expired. Sign in again."},401);
+        const user=await me.json();
+        const sr=await fetch(env.SUPABASE_URL+"/rest/v1/sellers?select=id&owner_id=eq."+encodeURIComponent(user.id)+"&limit=1",{headers:userHeaders});
+        const sellers=await sr.json().catch(()=>[]);
+        if(!sellers.length)return apiReply({error:"Create a seller account first."},403);
+        const r=await fetch(env.SUPABASE_URL+"/rest/v1/products?select=id,name_en,name_bn,slug,description,price_bdt,stock_quantity,status,image_url,category_id&seller_id=eq."+encodeURIComponent(sellers[0].id)+"&order=created_at.desc",{headers:userHeaders});
         return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
       }
       const b=await request.json().catch(()=>null);
