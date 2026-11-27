@@ -202,7 +202,7 @@ export default {
       if(url.pathname==="/api/orders" && request.method==="POST"){
         const b=await request.json().catch(()=>null);
         if(!Array.isArray(b?.items)||!b?.address) return apiReply({error:"Cart and delivery details are required."},400);
-        const r=await fetch(env.SUPABASE_URL+"/rest/v1/rpc/place_order",{method:"POST",headers,body:JSON.stringify({p_items:b.items,p_address:b.address,p_payment_method:b.payment_method||"cod",p_payment_channel:b.payment_channel||"cod"})});
+        const r=await fetch(env.SUPABASE_URL+"/rest/v1/rpc/place_order",{method:"POST",headers,body:JSON.stringify({p_items:b.items,p_address:b.address,p_payment_method:"cod"})});
         return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
       }
       if(url.pathname==="/api/orders" && request.method==="GET"){
