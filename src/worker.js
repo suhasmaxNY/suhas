@@ -25,6 +25,18 @@ export default {
     }
     const bearer=request.headers.get("authorization")||"";
     const userHeaders={apikey:env.SUPABASE_ANON_KEY,authorization:bearer,"content-type":"application/json",accept:"application/json","prefer":"return=representation"};
+    if(url.pathname==="/api/admin/sellers" && request.method==="GET"){
+      if(!bearer.startsWith("Bearer ")) return apiReply({error:"Admin sign-in required."},401);
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/rpc/admin_list_seller_applications",{method:"POST",headers:userHeaders,body:"{}"});
+      return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+    }
+    if(url.pathname==="/api/admin/sellers/review" && request.method==="POST"){
+      if(!bearer.startsWith("Bearer ")) return apiReply({error:"Admin sign-in required."},401);
+      const b=await request.json().catch(()=>null);
+      if(!b?.seller_id || !["approved","rejected","suspended"].includes(b?.decision)) return apiReply({error:"Seller ID and valid decision are required."},400);
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/rpc/admin_review_seller",{method:"POST",headers:userHeaders,body:JSON.stringify({p_seller_id:b.seller_id,p_decision:b.decision})});
+      return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+    }
     if(url.pathname==="/api/seller/apply" && request.method==="POST"){
       if(!bearer.startsWith("Bearer ")) return apiReply({error:"Sign in before applying."},401);
       const b=await request.json().catch(()=>null);
