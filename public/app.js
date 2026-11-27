@@ -45,7 +45,10 @@ $("#checkoutButton").onclick=openCheckout;$("#mobileCategory").onclick=()=>$("#c
 $("#languageToggle").onclick=()=>{language=language==="en"?"bn":"en";document.documentElement.lang=language;$("#languageToggle").textContent=language==="en"?"বাংলা":"English";$("#searchInput").placeholder=language==="en"?"Search in SUHAS...":"SUHAS-এ পণ্য খুঁজুন";showToast(language==="bn"?"বাংলা সার্চ চালু":"English search enabled")};
 function updatePaymentSummary(){
  const channel=$("#checkoutPayment")?.value||"cod";
- const subtotal=cart.reduce((sum,item)=>sum+Number(item.price||0)*Number(item.qty||0),0);
+ const checkoutLines=cart.map(item=>{const product=products.find(p=>String(p.id)===String(item.id));return product?{product,qty:Number(item.qty||0),lineTotal:Number(product.price||0)*Number(item.qty||0)}:null}).filter(Boolean);
+ const subtotal=checkoutLines.reduce((sum,line)=>sum+line.lineTotal,0);
+ const linesNode=$("#checkoutOrderItems");
+ if(linesNode)linesNode.innerHTML=checkoutLines.length?checkoutLines.map(line=>'<div class="flow-total checkout-product-line"><span>'+safe(line.product.name)+' × '+line.qty+'</span><b>'+money(line.lineTotal)+'</b></div>').join(""):'<p class="flow-note">No available products in your cart. Please return to the catalogue.</p>';
  const discount=channel==="cod"?0:Math.round(subtotal*0.03*100)/100;
  $("#checkoutSubtotal").textContent=money(subtotal);
  $("#checkoutDiscount").textContent=discount? "−"+money(discount):money(0);
