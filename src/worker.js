@@ -95,9 +95,11 @@ export default {
     if(url.pathname.startsWith("/api/seller/products/") && request.method==="PATCH"){
       if(!bearer.startsWith("Bearer ")) return apiReply({error:"Sign in first."},401);
       const id=url.pathname.split("/").pop();if(!/^[0-9a-f-]{36}$/i.test(id))return apiReply({error:"Invalid product id."},400);
+      const me=await fetch(env.SUPABASE_URL+"/auth/v1/user",{headers:{apikey:env.SUPABASE_ANON_KEY,authorization:bearer}});if(!me.ok)return apiReply({error:"Your session has expired. Sign in again."},401);const user=await me.json();
+      const sr=await fetch(env.SUPABASE_URL+"/rest/v1/sellers?select=id,status&owner_id=eq."+encodeURIComponent(user.id)+"&limit=1",{headers:userHeaders});const sellers=await sr.json().catch(()=>[]);if(!Array.isArray(sellers)||!sellers.length||sellers[0].status!=="approved")return apiReply({error:"An approved seller account is required to publish products."},403);
       const b=await request.json().catch(()=>null);const allowed={};
-      for(const k of ["name_en","name_bn","description","price_bdt","stock_quantity","image_url","image_urls","category_id"])if(b&&Object.hasOwn(b,k))allowed[k]=b[k];if(b&&Object.hasOwn(b,"status"))allowed.status="active";
-      const r=await fetch(env.SUPABASE_URL+"/rest/v1/products?id=eq."+id,{method:"PATCH",headers:userHeaders,body:JSON.stringify(allowed)});
+      for(const k of ["name_en","name_bn","description","price_bdt","stock_quantity","image_url","image_urls","category_id"])if(b&&Object.hasOwn(b,k))allowed[k]=b[k];allowed.status="active";
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/products?id=eq."+id+"&seller_id=eq."+encodeURIComponent(sellers[0].id),{method:"PATCH",headers:userHeaders,body:JSON.stringify(allowed)});
       return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
     }
     if(url.pathname==="/api/support/conversations" && (request.method==="GET"||request.method==="POST")){
