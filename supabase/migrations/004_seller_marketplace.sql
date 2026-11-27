@@ -53,3 +53,32 @@ revoke all on function public.apply_as_seller(text,text,text,text) from public, 
 grant execute on function public.apply_as_seller(text,text,text,text) to authenticated;
 
 create index if not exists sellers_status_idx on public.sellers(status);
+
+-- SUHAS seller listing permissions: pending sellers may save drafts only.
+drop policy if exists "seller manages own products" on public.products;
+drop policy if exists "seller updates own products" on public.products;
+create policy "seller creates own draft or approved listing" on public.products
+for insert to authenticated
+with check (
+  public.is_admin()
+  or (
+    public.owns_seller(seller_id)
+    and (
+      status='draft'
+      or exists(select 1 from public.sellers s where s.id=seller_id and s.status='approved')
+    )
+  )
+);
+create policy "seller updates own permitted listing" on public.products
+for update to authenticated
+using (public.owns_seller(seller_id) or public.is_admin())
+with check (
+  public.is_admin()
+  or (
+    public.owns_seller(seller_id)
+    and (
+      status<>'active'
+      or exists(select 1 from public.sellers s where s.id=seller_id and s.status='approved')
+    )
+  )
+);
