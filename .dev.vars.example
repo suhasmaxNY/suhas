@@ -1,0 +1,3 @@
+# Copy to .dev.vars locally and fill values. Never commit real credentials.
+SUPABASE_URL=
+SUPABASE_ANON_KEY=
