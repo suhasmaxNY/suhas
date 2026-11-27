@@ -1,4 +1,4 @@
-const CACHE="suhas-pwa-v2";
+const CACHE="suhas-pwa-v3";
 const SHELL=["/","/ai/","/styles.css?v=20261127-chatui","/app.js?v=20261127-assistantpage","/ai/style.css?v=1","/ai/app.js?v=1","/manifest.webmanifest","/icon.svg"];
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)))});
 self.addEventListener("message",event=>{if(event.data==="SUHAS_SKIP_WAITING")self.skipWaiting()});\nself.addEventListener("activate",event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
