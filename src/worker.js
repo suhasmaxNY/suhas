@@ -23,6 +23,58 @@ export default {
       const r=await fetch(env.SUPABASE_URL+"/auth/v1/token?grant_type=password",{method:"POST",headers:{apikey:env.SUPABASE_ANON_KEY,"content-type":"application/json"},body:JSON.stringify({email:b.email,password:b.password})});
       return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
     }
+    const bearer=request.headers.get("authorization")||"";
+    const userHeaders={apikey:env.SUPABASE_ANON_KEY,authorization:bearer,"content-type":"application/json",accept:"application/json","prefer":"return=representation"};
+    if(url.pathname==="/api/seller/apply" && request.method==="POST"){
+      if(!bearer.startsWith("Bearer ")) return apiReply({error:"Sign in before applying."},401);
+      const b=await request.json().catch(()=>null);
+      if(!b?.store_name||!b?.whatsapp_number) return apiReply({error:"Store name and WhatsApp number are required."},400);
+      const slug=String(b.store_name).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,48)+"-"+crypto.randomUUID().slice(0,6);
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/rpc/apply_as_seller",{method:"POST",headers:userHeaders,body:JSON.stringify({p_store_name:b.store_name,p_slug:slug,p_description:b.description||"",p_whatsapp_number:String(b.whatsapp_number).replace(/[^0-9]/g,"")})});
+      return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+    }
+    if(url.pathname==="/api/seller/me" && request.method==="GET"){
+      if(!bearer.startsWith("Bearer ")) return apiReply({error:"Sign in first."},401);
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/sellers?select=id,store_name,slug,description,status,whatsapp_number,support_email,created_at&limit=1",{headers:userHeaders});
+      return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+    }
+    if(url.pathname==="/api/seller/products" && (request.method==="GET"||request.method==="POST")){
+      if(!bearer.startsWith("Bearer ")) return apiReply({error:"Sign in first."},401);
+      if(request.method==="GET"){
+        const r=await fetch(env.SUPABASE_URL+"/rest/v1/products?select=id,name_en,name_bn,slug,description,price_bdt,stock_quantity,status,image_url,category_id&order=created_at.desc",{headers:userHeaders});
+        return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+      }
+      const b=await request.json().catch(()=>null);
+      if(!b?.name_en||!b?.price_bdt||!b?.category_id) return apiReply({error:"Product name, category and price are required."},400);
+      const slug=String(b.name_en).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,70)+"-"+crypto.randomUUID().slice(0,6);
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/products",{method:"POST",headers:userHeaders,body:JSON.stringify({seller_id:b.seller_id,category_id:b.category_id,name_en:b.name_en,name_bn:b.name_bn||null,slug,description:b.description||"",price_bdt:Number(b.price_bdt),stock_quantity:Number(b.stock_quantity||0),image_url:b.image_url||null,status:b.status||"draft"})});
+      return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+    }
+    if(url.pathname.startsWith("/api/seller/products/") && request.method==="PATCH"){
+      if(!bearer.startsWith("Bearer ")) return apiReply({error:"Sign in first."},401);
+      const id=url.pathname.split("/").pop();if(!/^[0-9a-f-]{36}$/i.test(id))return apiReply({error:"Invalid product id."},400);
+      const b=await request.json().catch(()=>null);const allowed={};
+      for(const k of ["name_en","name_bn","description","price_bdt","stock_quantity","image_url","status","category_id"])if(b&&Object.hasOwn(b,k))allowed[k]=b[k];
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/products?id=eq."+id,{method:"PATCH",headers:userHeaders,body:JSON.stringify(allowed)});
+      return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+    }
+    if(url.pathname==="/api/assistant" && request.method==="POST"){
+      const b=await request.json().catch(()=>null);const question=String(b?.question||"").trim().slice(0,1200);
+      if(question.length<2)return apiReply({error:"Please enter a question."},400);
+      const endpoint=new URL("/rest/v1/products",env.SUPABASE_URL);
+      endpoint.search=new URLSearchParams({select:"id,name_en,name_bn,description,price_bdt,slug,image_url,seller:sellers(store_name,whatsapp_number)",status:"eq.active",order:"created_at.desc",limit:"40"}).toString();
+      const pr=await fetch(endpoint,{headers:{apikey:env.SUPABASE_ANON_KEY,authorization:"Bearer "+env.SUPABASE_ANON_KEY,accept:"application/json"}});
+      const catalogue=await pr.json().catch(()=>[]);
+      const words=question.toLowerCase().split(/[^a-z0-9\u0980-\u09ff]+/).filter(x=>x.length>2);
+      const matches=(Array.isArray(catalogue)?catalogue:[]).map(p=>({...p,score:words.filter(word=>(p.name_en+" "+(p.name_bn||"")+" "+(p.description||"")).toLowerCase().includes(word)).length})).filter(p=>p.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
+      const marketContext="SUHAS is a Bangladesh-focused multi-vendor marketplace. Buyers can browse listed products, contact the product's own seller using the seller's WhatsApp contact, share product links, and place COD orders when checkout is enabled. Seller applications are reviewed; pending sellers cannot publish active listings. Never claim a feature is active unless stated here. Never invent prices, stock, seller contacts or product URLs. For product questions, use only the catalogue records below and provide /?product=SLUG links. If no matching product exists, say so. For general questions, answer helpfully but state uncertainty and avoid pretending to know private account/order information.\nCATALOGUE: "+JSON.stringify(matches.map(p=>({name:p.name_en,bn:p.name_bn,description:p.description,price_bdt:p.price_bdt,slug:p.slug,seller:p.seller?.store_name})));
+      if(env.AI?.run){
+        const out=await env.AI.run("@cf/meta/llama-3.1-8b-instruct",{messages:[{role:"system",content:marketContext},{role:"user",content:question}],max_tokens:650});
+        return apiReply({answer:out.response||out.output_text||"I couldn't generate an answer just now.",products:matches.map(p=>({name:p.name_en,price_bdt:p.price_bdt,slug:p.slug}))});
+      }
+      const answer=matches.length?"I found these SUHAS catalogue matches: "+matches.map(p=>p.name_en+" — ৳"+p.price_bdt+" — /?product="+p.slug).join("\n"):"I can help with SUHAS shopping, seller onboarding, product discovery, WhatsApp contact and COD order guidance. The live AI model is not connected yet; I can only search the current product catalogue right now.";
+      return apiReply({answer,products:matches.map(p=>({name:p.name_en,price_bdt:p.price_bdt,slug:p.slug}))});
+    }
     if(url.pathname.startsWith("/api/orders")){
       const bearer=request.headers.get("authorization")||"";
       if(!bearer.startsWith("Bearer ")) return apiReply({error:"Please sign in to continue."},401);
@@ -49,7 +101,7 @@ export default {
     if (url.pathname === "/api/products" && request.method === "GET") {
       if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return json({ error: "Supabase Worker secrets are not configured." }, 503);
       const endpoint = new URL("/rest/v1/products", env.SUPABASE_URL);
-      endpoint.search = new URLSearchParams({ select: "id,name_en,name_bn,slug,price_bdt,image_url,category_id,category:categories(name_en,name_bn)", status: "eq.active", order: "created_at.desc", limit: "40" }).toString();
+      endpoint.search = new URLSearchParams({ select: "id,name_en,name_bn,slug,description,price_bdt,stock_quantity,image_url,category_id,category:categories(name_en,name_bn),seller:sellers(id,store_name,whatsapp_number,slug)", status: "eq.active", order: "created_at.desc", limit: "40" }).toString();
       const upstream = await fetch(endpoint, { headers: { apikey: env.SUPABASE_ANON_KEY, authorization: `Bearer ${env.SUPABASE_ANON_KEY}`, accept: "application/json" } });
       return new Response(await upstream.text(), { status: upstream.status, headers: { ...cors, "content-type": upstream.headers.get("content-type") || "application/json", "cache-control": "public, max-age=30", "x-content-type-options": "nosniff" } });
     }
