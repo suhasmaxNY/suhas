@@ -3,3 +3,27 @@
 @media(max-width:700px){.chat-sidebar{position:fixed;z-index:20;left:0;top:0;bottom:0;width:min(82vw,300px);transform:translateX(-105%);box-shadow:8px 0 30px #0002}.chat-shell.sidebar-open .chat-sidebar{transform:translateX(0)}.mobile-backdrop{position:fixed;z-index:19;inset:0;background:#0005}.chat-shell.sidebar-open .mobile-backdrop{display:block}.chat-topbar{height:54px;flex-basis:54px;padding:0 10px}.top-left,.top-actions{gap:4px}.top-right-link{font-size:10px;padding:7px 9px}.welcome{top:43%;width:calc(100% - 28px)}.welcome h1{font-size:24px}.welcome p{font-size:12px}.suggestions{gap:7px;margin-top:20px}.suggestions button{font-size:10px;padding:9px 10px}.messages{padding:20px 14px 12px;gap:19px}.message-text{font-size:13px;line-height:1.75}.composer-wrap{padding:8px 10px max(12px,env(safe-area-inset-bottom))}.composer{border-radius:17px;padding:10px 10px 7px}.composer textarea{font-size:14px}.composer-bottom .hint{font-size:8px}.round-btn{width:32px;height:32px}}
 
 .top-right-link[hidden]{display:none}
+
+/* Mobile composer and keyboard stability */
+.chat-main{min-height:0;height:100dvh;overflow:hidden}
+.messages{min-height:0;overscroll-behavior:contain}
+.composer-wrap{flex:0 0 auto;position:sticky;bottom:0;z-index:5;padding-bottom:max(14px,env(safe-area-inset-bottom));}
+.composer{width:100%}
+.composer textarea{min-height:34px;max-height:28dvh;overflow-y:auto;touch-action:pan-y;-webkit-user-select:text;user-select:text}
+@media(max-width:700px){
+ html,body{height:100%;min-height:0}
+ .chat-shell{height:100dvh;min-height:0}
+ .chat-main{height:100dvh;min-height:0}
+ .chat-topbar{flex-shrink:0}
+ .messages{flex:1 1 0;padding-bottom:14px}
+ .composer-wrap{flex-shrink:0;padding-top:8px;padding-bottom:max(10px,env(safe-area-inset-bottom));}
+ .composer textarea{max-height:24dvh;font-size:16px;line-height:1.45}
+ .composer{box-shadow:0 -2px 14px #0000000a}
+}
+@media(max-height:520px) and (max-width:900px){
+ .chat-topbar{height:44px;flex-basis:44px}
+ .welcome{top:38%}
+ .welcome-logo{width:36px;height:36px;margin-bottom:8px}
+ .welcome h1{font-size:20px}
+ .suggestions{margin-top:10px}
+}
