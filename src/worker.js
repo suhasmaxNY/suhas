@@ -98,10 +98,16 @@ export default {
     if (url.pathname === "/api/health") {
       return json({ ok: true, service: "suhas-marketplace-api", databaseConfigured: Boolean(env.SUPABASE_URL && env.SUPABASE_ANON_KEY) });
     }
+    if(url.pathname==="/api/categories" && request.method==="GET"){
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/categories?select=id,name_en,name_bn,slug&is_active=eq.true&order=sort_order.asc",{headers:{apikey:env.SUPABASE_ANON_KEY,authorization:"Bearer "+env.SUPABASE_ANON_KEY,accept:"application/json"}});
+      return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"public, max-age=300"}});
+    }
     if (url.pathname === "/api/products" && request.method === "GET") {
       if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return json({ error: "Supabase Worker secrets are not configured." }, 503);
       const endpoint = new URL("/rest/v1/products", env.SUPABASE_URL);
-      endpoint.search = new URLSearchParams({ select: "id,name_en,name_bn,slug,description,price_bdt,stock_quantity,image_url,category_id,category:categories(name_en,name_bn),seller:sellers(id,store_name,whatsapp_number,slug)", status: "eq.active", order: "created_at.desc", limit: "40" }).toString();
+      const params={select:"id,name_en,name_bn,slug,description,price_bdt,stock_quantity,image_url,category_id,category:categories(name_en,name_bn),seller:sellers(id,store_name,whatsapp_number,slug)",status:"eq.active",order:"created_at.desc",limit:"40"};
+      const requestedSlug=url.searchParams.get("slug");if(requestedSlug)params.slug="eq."+requestedSlug;
+      endpoint.search=new URLSearchParams(params).toString();
       const upstream = await fetch(endpoint, { headers: { apikey: env.SUPABASE_ANON_KEY, authorization: `Bearer ${env.SUPABASE_ANON_KEY}`, accept: "application/json" } });
       return new Response(await upstream.text(), { status: upstream.status, headers: { ...cors, "content-type": upstream.headers.get("content-type") || "application/json", "cache-control": "public, max-age=30", "x-content-type-options": "nosniff" } });
     }
