@@ -1,5 +1,5 @@
-const CACHE="suhas-pwa-v16";
-const SHELL=["/","/ai/","/styles.css?v=20261127-adminpanel1","/app.js?v=20261127-categoryfix1","/ai/style.css?v=4","/ai/app.js?v=7","/manifest.webmanifest","/icon.svg"];
+const CACHE="suhas-pwa-v17";
+const SHELL=["/","/ai/","/styles.css?v=20261127-adminpanel1","/app.js?v=20261127-categoryfix2","/ai/style.css?v=4","/ai/app.js?v=7","/manifest.webmanifest","/icon.svg"];
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)))});
 self.addEventListener("message",event=>{if(event.data==="SUHAS_SKIP_WAITING")self.skipWaiting()});
 self.addEventListener("activate",event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()))});
