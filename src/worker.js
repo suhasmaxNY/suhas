@@ -203,7 +203,11 @@ export default {
       if(isPost){
         const b=await request.json().catch(()=>null);
         if(!Array.isArray(b?.items)||b.items.length<1||b.items.length>30||!b?.address||typeof b.address!=="object") return apiReply({error:"Please select a product and enter your delivery details."},400);
-        const paymentChannel=String(b?.payment_channel||"cod").toLowerCase();const paymentMethod=paymentChannel==="cod"?"cod":"online";if(!["cod","bkash","nagad"].includes(paymentChannel))return apiReply({error:"Choose Cash on Delivery, bKash or Nagad."},400);const r=await fetch(env.SUPABASE_URL+"/rest/v1/rpc/place_order",{method:"POST",headers,body:JSON.stringify({p_items:b.items,p_address:b.address,p_payment_method:paymentMethod,p_payment_channel:paymentChannel})});
+        const paymentChannel=String(b?.payment_channel||"cod").toLowerCase();const paymentMethod=paymentChannel==="cod"?"cod":"online";if(!["cod","bkash","nagad"].includes(paymentChannel))return apiReply({error:"Choose Cash on Delivery, bKash or Nagad."},400);const rpcUrl=env.SUPABASE_URL+"/rest/v1/rpc/place_order";
+        const payload=JSON.stringify({p_items:b.items,p_address:b.address,p_payment_method:paymentMethod,p_payment_channel:paymentChannel});
+        let r=await fetch(rpcUrl,{method:"POST",headers,body:payload});
+        // A stale/invalid signed-in JWT must not block guest checkout. Retry only an auth failure with the public anon role; the first 401 cannot have created an order.
+        if(r.status===401){const guestHeaders={...headers,authorization:"Bearer "+env.SUPABASE_ANON_KEY};r=await fetch(rpcUrl,{method:"POST",headers:guestHeaders,body:payload});}
         return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
       }
       if(url.pathname==="/api/orders" && request.method==="GET"){
