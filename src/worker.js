@@ -203,7 +203,7 @@ export default {
       if(isPost){
         const b=await request.json().catch(()=>null);
         if(!Array.isArray(b?.items)||b.items.length<1||b.items.length>30||!b?.address||typeof b.address!=="object") return apiReply({error:"Please select a product and enter your delivery details."},400);
-        const r=await fetch(env.SUPABASE_URL+"/rest/v1/rpc/place_order",{method:"POST",headers,body:JSON.stringify({p_items:b.items,p_address:b.address,p_payment_method:"cod",p_payment_channel:"cod"})});
+        const paymentChannel=String(b?.payment_channel||"cod").toLowerCase();const paymentMethod=paymentChannel==="cod"?"cod":"online";if(!["cod","bkash","nagad"].includes(paymentChannel))return apiReply({error:"Choose Cash on Delivery, bKash or Nagad."},400);const r=await fetch(env.SUPABASE_URL+"/rest/v1/rpc/place_order",{method:"POST",headers,body:JSON.stringify({p_items:b.items,p_address:b.address,p_payment_method:paymentMethod,p_payment_channel:paymentChannel})});
         return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
       }
       if(url.pathname==="/api/orders" && request.method==="GET"){
