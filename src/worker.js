@@ -223,13 +223,32 @@ export default {
       return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"public, max-age=300"}});
     }
     if (url.pathname === "/api/products" && request.method === "GET") {
-      if (!env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return json({ error: "Supabase Worker secrets are not configured." }, 503);
-      const endpoint = new URL("/rest/v1/products", env.SUPABASE_URL);
-      const params={select:"id,name_en,name_bn,slug,description,price_bdt,stock_quantity,image_url,category_id,category:categories(name_en,name_bn),seller:sellers(id,store_name,whatsapp_number,slug)",status:"eq.active",order:"created_at.desc",limit:"40"};
+      const headers={apikey:env.SUPABASE_ANON_KEY,authorization:"Bearer "+env.SUPABASE_ANON_KEY,accept:"application/json"};
+      const endpoint=new URL("/rest/v1/products",env.SUPABASE_URL);
+      const params={select:"id,name_en,name_bn,slug,description,price_bdt,stock_quantity,image_url,image_urls,category_id,seller_id,created_at",status:"eq.active",order:"created_at.desc",limit:"40"};
       const requestedSlug=url.searchParams.get("slug");if(requestedSlug)params.slug="eq."+requestedSlug;
       endpoint.search=new URLSearchParams(params).toString();
-      const upstream = await fetch(endpoint, { headers: { apikey: env.SUPABASE_ANON_KEY, authorization: `Bearer ${env.SUPABASE_ANON_KEY}`, accept: "application/json" } });
-      return new Response(await upstream.text(), { status: upstream.status, headers: { ...cors, "content-type": upstream.headers.get("content-type") || "application/json", "cache-control": "public, max-age=30", "x-content-type-options": "nosniff" } });
+      const upstream=await fetch(endpoint,{headers});
+      const raw=await upstream.text();
+      if(!upstream.ok)return new Response(raw,{status:upstream.status,headers:{...cors,"content-type":upstream.headers.get("content-type")||"application/json","cache-control":"no-store"}});
+      let products;try{products=JSON.parse(raw)}catch{return apiReply({error:"Invalid product data returned by Supabase."},502)}
+      if(!Array.isArray(products))return apiReply({error:"Supabase product response was not a list."},502);
+      const categoryIds=[...new Set(products.map(p=>p.category_id).filter(Boolean))];
+      const sellerIds=[...new Set(products.map(p=>p.seller_id).filter(Boolean))];
+      const categoryUrl=new URL("/rest/v1/categories",env.SUPABASE_URL);
+      categoryUrl.search=new URLSearchParams({select:"id,name_en,name_bn",id:"in.("+categoryIds.join(",")+")"}).toString();
+      const sellerUrl=new URL("/rest/v1/sellers",env.SUPABASE_URL);
+      sellerUrl.search=new URLSearchParams({select:"id,store_name,whatsapp_number,slug",id:"in.("+sellerIds.join(",")+")"}).toString();
+      const [categoryResponse,sellerResponse]=await Promise.all([
+        categoryIds.length?fetch(categoryUrl,{headers}):Promise.resolve(null),
+        sellerIds.length?fetch(sellerUrl,{headers}):Promise.resolve(null)
+      ]);
+      const categoryRows=categoryResponse?.ok?await categoryResponse.json().catch(()=>[]):[];
+      const sellerRows=sellerResponse?.ok?await sellerResponse.json().catch(()=>[]):[];
+      const categories=new Map(categoryRows.map(x=>[x.id,x]));
+      const sellers=new Map(sellerRows.map(x=>[x.id,x]));
+      const result=products.map(p=>({...p,category:categories.get(p.category_id)||null,seller:sellers.get(p.seller_id)||null}));
+      return new Response(JSON.stringify(result),{status:200,headers:{...cors,"content-type":"application/json; charset=utf-8","cache-control":"no-store","x-content-type-options":"nosniff"}});
     }
     if (env.ASSETS) return env.ASSETS.fetch(request);
     return json({ service: "SUHAS.COM API", message: "Static storefront assets are not attached yet.", docs: "https://github.com/suhasmaxNY/suhas" });
