@@ -1,4 +1,4 @@
-const products = [
+let products = [
   {id:1,name:"Everyday Canvas Tote",category:"Fashion",price:690,emoji:"👜",tag:"BESTSELLER",bg:"#f2e5d6"},
   {id:2,name:"Minimal Ceramic Mug Set",category:"Home",price:850,emoji:"☕",tag:"HOME PICK",bg:"#e7e9df"},
   {id:3,name:"Wireless Earbuds Lite",category:"Electronics",price:1490,emoji:"🎧",tag:"TRENDING",bg:"#e5e7ed"},
@@ -19,6 +19,28 @@ const copy = {
 };
 let language="en", activeCategory="All", searchTerm="", cart=JSON.parse(localStorage.getItem("suhas-cart")||"[]");
 const $=s=>document.querySelector(s), money=n=>"৳"+Number(n).toLocaleString("en-BD");
+
+async function loadMarketplaceProducts(){
+  try {
+    const response = await fetch("/api/products", {headers:{accept:"application/json"}});
+    if (!response.ok) throw new Error("Catalogue unavailable");
+    const rows = await response.json();
+    if (!Array.isArray(rows)) throw new Error("Unexpected catalogue response");
+    if (!rows.length) { $("#demoLabel").textContent = "NO LIVE PRODUCTS YET · SAMPLE ITEMS SHOWN"; return; }
+    const safe = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    products = rows.map(p => {
+      const category = safe(p.category?.name_en || "Other");
+      return {id:p.id,name:safe(p.name_en || p.name_bn || "Product"),category,price:Number(p.price_bdt),emoji:"📦",tag:"LOCAL SELLER",bg:"#f2eee8"};
+    });
+    categoryMeta.splice(0, categoryMeta.length, ...[...new Set(products.map(p=>p.category))].map(name=>({name,icon:"📦"})));
+    $("#demoLabel").textContent = "LIVE SELLER CATALOGUE";
+    renderCategories(); renderFilters(); renderProducts(); renderCart();
+  } catch (error) {
+    $("#demoLabel").textContent = "DEMO CATALOGUE · DATABASE NOT CONNECTED";
+    console.info("SUHAS catalogue:", error.message);
+  }
+}
+
 function showToast(message){const t=$("#toast");t.textContent=message;t.classList.add("show");clearTimeout(showToast.timer);showToast.timer=setTimeout(()=>t.classList.remove("show"),2100)}
 function renderCategories(){$("#categoryGrid").innerHTML=categoryMeta.map(c=>'<button class="category-tile '+(activeCategory===c.name?'active':'')+'" data-category="'+c.name+'"><span class="category-icon">'+c.icon+'</span><b>'+c.name+'</b></button>').join("");$("#categoryGrid").querySelectorAll("button").forEach(b=>b.onclick=()=>setCategory(b.dataset.category))}
 function renderFilters(){const names=["All",...categoryMeta.map(c=>c.name)];$("#filterChips").innerHTML=names.map(n=>'<button class="chip '+(activeCategory===n?'active':'')+'" data-category="'+n+'">'+n+'</button>').join("");$("#filterChips").querySelectorAll("button").forEach(b=>b.onclick=()=>setCategory(b.dataset.category))}
@@ -36,4 +58,4 @@ $("#cartOpen").onclick=()=>$("#cartDrawer").hidden=false;$("#cartClose").onclick
 $("#cartDrawer").addEventListener("click",e=>{if(e.target.id==="cartDrawer")e.currentTarget.hidden=true});
 $("#checkoutButton").onclick=()=>showToast("Checkout will be enabled after Supabase setup. No payment has been taken.");
 $("#year").textContent=new Date().getFullYear();
-renderCategories();renderFilters();renderProducts();renderCart();setLanguage();
+renderCategories();renderFilters();renderProducts();renderCart();setLanguage();loadMarketplaceProducts();
