@@ -80,6 +80,53 @@ export default {
       const r=await fetch(env.SUPABASE_URL+"/rest/v1/products?id=eq."+id,{method:"PATCH",headers:userHeaders,body:JSON.stringify(allowed)});
       return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
     }
+    if(url.pathname==="/api/support/conversations" && (request.method==="GET"||request.method==="POST")){
+      if(!bearer.startsWith("Bearer ")) return apiReply({error:"Sign in to chat with SUHAS support."},401);
+      const me=await fetch(env.SUPABASE_URL+"/auth/v1/user",{headers:{apikey:env.SUPABASE_ANON_KEY,authorization:bearer}});
+      if(!me.ok)return apiReply({error:"Your session has expired. Sign in again."},401);
+      const user=await me.json();
+      if(request.method==="GET"){
+        const r=await fetch(env.SUPABASE_URL+"/rest/v1/support_conversations?select=id,subject,status,created_at,updated_at&order=updated_at.desc",{headers:userHeaders});
+        return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+      }
+      const b=await request.json().catch(()=>null);
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/support_conversations",{method:"POST",headers:userHeaders,body:JSON.stringify({user_id:user.id,subject:String(b?.subject||"SUHAS support").slice(0,120)})});
+      return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+    }
+    if(url.pathname==="/api/support/messages" && (request.method==="GET"||request.method==="POST")){
+      if(!bearer.startsWith("Bearer ")) return apiReply({error:"Sign in to chat with SUHAS support."},401);
+      const me=await fetch(env.SUPABASE_URL+"/auth/v1/user",{headers:{apikey:env.SUPABASE_ANON_KEY,authorization:bearer}});
+      if(!me.ok)return apiReply({error:"Your session has expired. Sign in again."},401);
+      const user=await me.json();
+      const conversationId=url.searchParams.get("conversation_id");
+      if(request.method==="GET"){
+        if(!conversationId||!/^[0-9a-f-]{36}$/i.test(conversationId))return apiReply({error:"A valid conversation is required."},400);
+        const r=await fetch(env.SUPABASE_URL+"/rest/v1/support_messages?select=id,conversation_id,sender_id,sender_role,message,created_at&conversation_id=eq."+conversationId+"&order=created_at.asc",{headers:userHeaders});
+        return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+      }
+      const b=await request.json().catch(()=>null);
+      if(!b?.conversation_id||!/^[0-9a-f-]{36}$/i.test(b.conversation_id)||!String(b.message||"").trim())return apiReply({error:"Conversation and message are required."},400);
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/support_messages",{method:"POST",headers:userHeaders,body:JSON.stringify({conversation_id:b.conversation_id,sender_id:user.id,sender_role:"customer",message:String(b.message).trim().slice(0,4000)})});
+      if(!r.ok)return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+      await fetch(env.SUPABASE_URL+"/rest/v1/support_conversations?id=eq."+b.conversation_id,{method:"PATCH",headers:userHeaders,body:JSON.stringify({status:"open",updated_at:new Date().toISOString()})});
+      return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+    }
+    if(url.pathname==="/api/admin/support" && request.method==="GET"){
+      if(!bearer.startsWith("Bearer "))return apiReply({error:"Admin sign-in required."},401);
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/support_conversations?select=id,user_id,subject,status,created_at,updated_at&order=updated_at.desc&limit=100",{headers:userHeaders});
+      return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+    }
+    if(url.pathname==="/api/admin/support/reply" && request.method==="POST"){
+      if(!bearer.startsWith("Bearer "))return apiReply({error:"Admin sign-in required."},401);
+      const me=await fetch(env.SUPABASE_URL+"/auth/v1/user",{headers:{apikey:env.SUPABASE_ANON_KEY,authorization:bearer}});
+      if(!me.ok)return apiReply({error:"Your session has expired. Sign in again."},401);
+      const user=await me.json(),b=await request.json().catch(()=>null);
+      if(!b?.conversation_id||!/^[0-9a-f-]{36}$/i.test(b.conversation_id)||!String(b.message||"").trim())return apiReply({error:"Conversation and reply are required."},400);
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/support_messages",{method:"POST",headers:userHeaders,body:JSON.stringify({conversation_id:b.conversation_id,sender_id:user.id,sender_role:"admin",message:String(b.message).trim().slice(0,4000)})});
+      if(!r.ok)return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+      await fetch(env.SUPABASE_URL+"/rest/v1/support_conversations?id=eq."+b.conversation_id,{method:"PATCH",headers:userHeaders,body:JSON.stringify({status:"answered",updated_at:new Date().toISOString()})});
+      return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
+    }
     if(url.pathname==="/api/assistant" && request.method==="POST"){
       const b=await request.json().catch(()=>null);const question=String(b?.question||"").trim().slice(0,1200);
       if(question.length<2)return apiReply({error:"Please enter a question."},400);
@@ -102,7 +149,7 @@ export default {
       const marketContext="SUHAS is a Bangladesh-focused multi-vendor marketplace. Buyers can browse listed products, contact the product's own seller using the seller's WhatsApp contact, share product links, and place COD orders when checkout is enabled. Seller applications are reviewed; pending sellers cannot publish active listings. Never claim a feature is active unless stated here. Never invent prices, stock, seller contacts or product URLs. For product questions, use only the catalogue records below and provide /?product=SLUG links. If no matching product exists, say so. For general questions, answer helpfully but state uncertainty and avoid pretending to know private account/order information.\nCATALOGUE: "+JSON.stringify(matches.map(p=>({name:p.name_en,bn:p.name_bn,description:p.description,price_bdt:p.price_bdt,slug:p.slug,seller:p.seller?.store_name})));
       if(env.AI?.run){
         try {
-          const out=await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast",{messages:[{role:"system",content:marketContext},{role:"user",content:question}],max_tokens:650});
+          const history=Array.isArray(b?.history)?b.history.filter(m=>m&&["user","assistant"].includes(m.role)&&typeof m.content==="string").slice(-10).map(m=>({role:m.role,content:m.content.slice(0,1200)})):[];\n          const out=await env.AI.run("@cf/meta/llama-3.1-8b-instruct-fast",{messages:[{role:"system",content:marketContext},...history,{role:"user",content:question}],max_tokens:650});
           const answer=out?.response||out?.output_text;
           if(answer) return apiReply({answer,products:matches.map(p=>({name:p.name_en,price_bdt:p.price_bdt,slug:p.slug}))});
         } catch(error) {
