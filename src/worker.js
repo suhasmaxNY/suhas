@@ -142,11 +142,17 @@ export default {
     }
     if(url.pathname==="/api/admin/support" && request.method==="GET"){
       if(!bearer.startsWith("Bearer "))return apiReply({error:"Admin sign-in required."},401);
+      const allowed=await fetch(env.SUPABASE_URL+"/rest/v1/rpc/is_admin",{method:"POST",headers:userHeaders,body:"{}"});
+      if(!allowed.ok||await allowed.json().catch(()=>false)!==true)return apiReply({error:"Admin access required."},403);
+
       const r=await fetch(env.SUPABASE_URL+"/rest/v1/support_conversations?select=id,user_id,subject,status,created_at,updated_at&order=updated_at.desc&limit=100",{headers:userHeaders});
       return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
     }
     if(url.pathname==="/api/admin/support/reply" && request.method==="POST"){
       if(!bearer.startsWith("Bearer "))return apiReply({error:"Admin sign-in required."},401);
+      const allowed=await fetch(env.SUPABASE_URL+"/rest/v1/rpc/is_admin",{method:"POST",headers:userHeaders,body:"{}"});
+      if(!allowed.ok||await allowed.json().catch(()=>false)!==true)return apiReply({error:"Admin access required."},403);
+
       const me=await fetch(env.SUPABASE_URL+"/auth/v1/user",{headers:{apikey:env.SUPABASE_ANON_KEY,authorization:bearer}});
       if(!me.ok)return apiReply({error:"Your session has expired. Sign in again."},401);
       const user=await me.json(),b=await request.json().catch(()=>null);
