@@ -197,12 +197,13 @@ export default {
     }
     if(url.pathname.startsWith("/api/orders")){
       const bearer=request.headers.get("authorization")||"";
-      if(!bearer.startsWith("Bearer ")) return apiReply({error:"Please sign in to continue."},401);
-      const headers={apikey:env.SUPABASE_ANON_KEY,authorization:bearer,"content-type":"application/json",accept:"application/json"};
-      if(url.pathname==="/api/orders" && request.method==="POST"){
+      const isPost=url.pathname==="/api/orders" && request.method==="POST";
+      if(!isPost && !bearer.startsWith("Bearer ")) return apiReply({error:"Sign in is required to access account order history."},401);
+      const headers={apikey:env.SUPABASE_ANON_KEY,authorization:bearer.startsWith("Bearer ")?bearer:"Bearer "+env.SUPABASE_ANON_KEY,"content-type":"application/json",accept:"application/json"};
+      if(isPost){
         const b=await request.json().catch(()=>null);
-        if(!Array.isArray(b?.items)||!b?.address) return apiReply({error:"Cart and delivery details are required."},400);
-        const r=await fetch(env.SUPABASE_URL+"/rest/v1/rpc/place_order",{method:"POST",headers,body:JSON.stringify({p_items:b.items,p_address:b.address,p_payment_method:"cod"})});
+        if(!Array.isArray(b?.items)||b.items.length<1||b.items.length>30||!b?.address||typeof b.address!=="object") return apiReply({error:"Please select a product and enter your delivery details."},400);
+        const r=await fetch(env.SUPABASE_URL+"/rest/v1/rpc/place_order",{method:"POST",headers,body:JSON.stringify({p_items:b.items,p_address:b.address,p_payment_method:"cod",p_payment_channel:"cod"})});
         return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
       }
       if(url.pathname==="/api/orders" && request.method==="GET"){
