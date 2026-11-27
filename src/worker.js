@@ -14,7 +14,8 @@ export default {
     if(url.pathname==="/api/auth/signup" && request.method==="POST"){
       const b=await request.json().catch(()=>null);
       if(!b?.email || !b?.password || b.password.length<8 || !b?.full_name) return apiReply({error:"Name, email and password (at least 8 characters) are required."},400);
-      const r=await fetch(env.SUPABASE_URL+"/auth/v1/signup",{method:"POST",headers:{apikey:env.SUPABASE_ANON_KEY,"content-type":"application/json"},body:JSON.stringify({email:b.email,password:b.password,data:{full_name:b.full_name}})});
+      const signupUrl=new URL("/auth/v1/signup",env.SUPABASE_URL);signupUrl.searchParams.set("redirect_to","https://suhasny.pages.dev/");
+      const r=await fetch(signupUrl,{method:"POST",headers:{apikey:env.SUPABASE_ANON_KEY,"content-type":"application/json"},body:JSON.stringify({email:b.email,password:b.password,data:{full_name:b.full_name}})});
       return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
     }
     if(url.pathname==="/api/auth/login" && request.method==="POST"){
@@ -90,8 +91,13 @@ export default {
       const matches=(Array.isArray(catalogue)?catalogue:[]).map(p=>({...p,score:words.filter(word=>(p.name_en+" "+(p.name_bn||"")+" "+(p.description||"")).toLowerCase().includes(word)).length})).filter(p=>p.score>0).sort((a,b)=>b.score-a.score).slice(0,6);
       const marketContext="SUHAS is a Bangladesh-focused multi-vendor marketplace. Buyers can browse listed products, contact the product's own seller using the seller's WhatsApp contact, share product links, and place COD orders when checkout is enabled. Seller applications are reviewed; pending sellers cannot publish active listings. Never claim a feature is active unless stated here. Never invent prices, stock, seller contacts or product URLs. For product questions, use only the catalogue records below and provide /?product=SLUG links. If no matching product exists, say so. For general questions, answer helpfully but state uncertainty and avoid pretending to know private account/order information.\nCATALOGUE: "+JSON.stringify(matches.map(p=>({name:p.name_en,bn:p.name_bn,description:p.description,price_bdt:p.price_bdt,slug:p.slug,seller:p.seller?.store_name})));
       if(env.AI?.run){
-        const out=await env.AI.run("@cf/meta/llama-3.1-8b-instruct",{messages:[{role:"system",content:marketContext},{role:"user",content:question}],max_tokens:650});
-        return apiReply({answer:out.response||out.output_text||"I couldn't generate an answer just now.",products:matches.map(p=>({name:p.name_en,price_bdt:p.price_bdt,slug:p.slug}))});
+        try {
+          const out=await env.AI.run("@cf/meta/llama-3.1-8b-instruct",{messages:[{role:"system",content:marketContext},{role:"user",content:question}],max_tokens:650});
+          const answer=out?.response||out?.output_text;
+          if(answer) return apiReply({answer,products:matches.map(p=>({name:p.name_en,price_bdt:p.price_bdt,slug:p.slug}))});
+        } catch(error) {
+          console.error("SUHAS AI model error:",error?.message||String(error));
+        }
       }
       const answer=matches.length?"I found these SUHAS catalogue matches: "+matches.map(p=>p.name_en+" — ৳"+p.price_bdt+" — /?product="+p.slug).join("\n"):"I can help with SUHAS shopping, seller onboarding, product discovery, WhatsApp contact and COD order guidance. The live AI model is not connected yet; I can only search the current product catalogue right now.";
       return apiReply({answer,products:matches.map(p=>({name:p.name_en,price_bdt:p.price_bdt,slug:p.slug}))});
