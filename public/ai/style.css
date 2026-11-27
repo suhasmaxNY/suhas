@@ -10,3 +10,22 @@
 .composer textarea{min-height:34px;max-height:24dvh;overflow-y:auto;touch-action:pan-y;-webkit-user-select:text;user-select:text}
 @media(max-width:700px){html,body{height:100%;min-height:0}.chat-shell{height:var(--visible-height,100dvh);min-height:0}.chat-main{height:var(--visible-height,100dvh);min-height:0}.chat-topbar{flex-shrink:0}.messages{flex:1 1 0;padding-bottom:14px}.composer-wrap{flex-shrink:0;padding-top:8px;padding-bottom:max(8px,env(safe-area-inset-bottom))}.composer textarea{max-height:20dvh;font-size:16px;line-height:1.45}.composer{box-shadow:0 -2px 14px #0000000a}}
 @media(max-height:520px) and (max-width:900px){.chat-topbar{height:44px;flex-basis:44px}.welcome{top:38%}.welcome-logo{width:36px;height:36px;margin-bottom:8px}.welcome h1{font-size:20px}.suggestions{margin-top:10px}}
+
+/* Keep the composer physically anchored to the visible viewport on phones,
+   independently of message-list height changes after the first send. */
+@media(max-width:700px){
+  .chat-main{height:100%;min-height:0;overflow:hidden}
+  .messages{padding-bottom:130px;scroll-padding-bottom:130px}
+  .composer-wrap{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:var(--keyboard-inset,0px);
+    width:100%;
+    max-width:850px;
+    margin:0 auto;
+    z-index:30;
+    padding:8px 10px max(8px,env(safe-area-inset-bottom));
+    background:linear-gradient(transparent,#fff 15%);
+  }
+}
