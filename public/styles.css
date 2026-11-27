@@ -132,3 +132,6 @@
 
 /* Checkout feedback must remain readable above the mobile navigation */
 .checkout-feedback{display:block;padding:13px 14px;margin:8px 0;border:1px solid #c62828;border-radius:8px;background:#fff0f0;color:#9b1717;font-size:13px;font-weight:700;line-height:1.6;overflow-wrap:anywhere;white-space:normal}.checkout-feedback[hidden]{display:none!important}.toast{bottom:calc(92px + env(safe-area-inset-bottom));z-index:10001;max-height:42vh;overflow-y:auto;pointer-events:none}@media(max-width:700px){.checkout-feedback{font-size:13px;padding:14px}.flow-modal{max-height:calc(100dvh - 24px);overflow-y:auto}}
+
+/* Compact seller contact shown only in the product details view. */
+.whatsapp-detail-top{display:inline-flex;width:auto;min-height:28px;padding:5px 10px;margin:7px 0 9px;border-radius:5px;font-size:10px;line-height:1.2;}
