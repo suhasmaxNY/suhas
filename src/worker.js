@@ -81,20 +81,22 @@ export default {
         const sr=await fetch(env.SUPABASE_URL+"/rest/v1/sellers?select=id&owner_id=eq."+encodeURIComponent(user.id)+"&limit=1",{headers:userHeaders});
         const sellers=await sr.json().catch(()=>[]);
         if(!sellers.length)return apiReply({error:"Create a seller account first."},403);
-        const r=await fetch(env.SUPABASE_URL+"/rest/v1/products?select=id,name_en,name_bn,slug,description,price_bdt,stock_quantity,status,image_url,category_id&seller_id=eq."+encodeURIComponent(sellers[0].id)+"&order=created_at.desc",{headers:userHeaders});
+        const r=await fetch(env.SUPABASE_URL+"/rest/v1/products?select=id,name_en,name_bn,slug,description,price_bdt,stock_quantity,status,image_url,image_urls,category_id&seller_id=eq."+encodeURIComponent(sellers[0].id)+"&order=created_at.desc",{headers:userHeaders});
         return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
       }
       const b=await request.json().catch(()=>null);
-      if(!b?.name_en||!b?.price_bdt||!b?.category_id) return apiReply({error:"Product name, category and price are required."},400);
+      if(!b?.name_en||!b?.price_bdt||!b?.category_id||!String(b.description||"").trim()||!Array.isArray(b.image_urls)) return apiReply({error:"Complete product name, category, price, description and photo details before publishing."},400);
+      const me=await fetch(env.SUPABASE_URL+"/auth/v1/user",{headers:{apikey:env.SUPABASE_ANON_KEY,authorization:bearer}});if(!me.ok)return apiReply({error:"Your session has expired. Sign in again."},401);const user=await me.json();
+      const sr=await fetch(env.SUPABASE_URL+"/rest/v1/sellers?select=id,status&owner_id=eq."+encodeURIComponent(user.id)+"&limit=1",{headers:userHeaders});const sellers=await sr.json().catch(()=>[]);if(!Array.isArray(sellers)||!sellers.length)return apiReply({error:"Create a seller account first."},403);if(sellers[0].status!=="approved")return apiReply({error:"Your seller account must be approved before publishing products."},403);
       const slug=String(b.name_en).toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"").slice(0,70)+"-"+crypto.randomUUID().slice(0,6);
-      const r=await fetch(env.SUPABASE_URL+"/rest/v1/products",{method:"POST",headers:userHeaders,body:JSON.stringify({seller_id:b.seller_id,category_id:b.category_id,name_en:b.name_en,name_bn:b.name_bn||null,slug,description:b.description||"",price_bdt:Number(b.price_bdt),stock_quantity:Number(b.stock_quantity||0),image_url:b.image_url||null,status:b.status||"draft"})});
+      const r=await fetch(env.SUPABASE_URL+"/rest/v1/products",{method:"POST",headers:userHeaders,body:JSON.stringify({seller_id:sellers[0].id,category_id:b.category_id,name_en:b.name_en,name_bn:b.name_bn||null,slug,description:b.description,price_bdt:Number(b.price_bdt),stock_quantity:Number(b.stock_quantity||0),image_url:b.image_url||b.image_urls[0]||null,image_urls:b.image_urls,status:"active"})});
       return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
     }
     if(url.pathname.startsWith("/api/seller/products/") && request.method==="PATCH"){
       if(!bearer.startsWith("Bearer ")) return apiReply({error:"Sign in first."},401);
       const id=url.pathname.split("/").pop();if(!/^[0-9a-f-]{36}$/i.test(id))return apiReply({error:"Invalid product id."},400);
       const b=await request.json().catch(()=>null);const allowed={};
-      for(const k of ["name_en","name_bn","description","price_bdt","stock_quantity","image_url","status","category_id"])if(b&&Object.hasOwn(b,k))allowed[k]=b[k];
+      for(const k of ["name_en","name_bn","description","price_bdt","stock_quantity","image_url","image_urls","category_id"])if(b&&Object.hasOwn(b,k))allowed[k]=b[k];if(b&&Object.hasOwn(b,"status"))allowed.status="active";
       const r=await fetch(env.SUPABASE_URL+"/rest/v1/products?id=eq."+id,{method:"PATCH",headers:userHeaders,body:JSON.stringify(allowed)});
       return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
     }
