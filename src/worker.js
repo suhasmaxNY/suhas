@@ -54,6 +54,24 @@ export default {
       const r=await fetch(env.SUPABASE_URL+"/rest/v1/sellers?select=id,store_name,slug,description,status,whatsapp_number,support_email,created_at&owner_id=eq."+encodeURIComponent(user.id)+"&limit=1",{headers:userHeaders});
       return new Response(await r.text(),{status:r.status,headers:{...cors,"content-type":"application/json","cache-control":"no-store"}});
     }
+    if(url.pathname==="/api/seller/upload" && request.method==="POST"){
+      if(!bearer.startsWith("Bearer ")) return apiReply({error:"Sign in first."},401);
+      const me=await fetch(env.SUPABASE_URL+"/auth/v1/user",{headers:{apikey:env.SUPABASE_ANON_KEY,authorization:bearer}});
+      if(!me.ok)return apiReply({error:"Your session has expired. Sign in again."},401);
+      const user=await me.json();
+      const sr=await fetch(env.SUPABASE_URL+"/rest/v1/sellers?select=id&owner_id=eq."+encodeURIComponent(user.id)+"&limit=1",{headers:userHeaders});
+      const sellers=await sr.json().catch(()=>[]);
+      if(!Array.isArray(sellers)||!sellers.length)return apiReply({error:"Create a seller account before uploading product photos."},403);
+      const form=await request.formData();const file=form.get("file");
+      const allowed={"image/jpeg":"jpg","image/png":"png","image/webp":"webp","image/gif":"gif"};
+      if(!file||typeof file.arrayBuffer!=="function"||!allowed[file.type])return apiReply({error:"Choose a JPG, PNG, WEBP or GIF image."},400);
+      if(file.size>5*1024*1024)return apiReply({error:"Product image must be 5 MB or smaller."},413);
+      const objectPath=user.id+"/"+crypto.randomUUID()+"."+allowed[file.type];
+      const upload=await fetch(env.SUPABASE_URL+"/storage/v1/object/product-images/"+objectPath,{method:"POST",headers:{apikey:env.SUPABASE_ANON_KEY,authorization:bearer,"content-type":file.type,"cache-control":"3600","x-upsert":"false"},body:file});
+      const result=await upload.json().catch(()=>({}));
+      if(!upload.ok)return apiReply({error:result.message||result.error||"Storage upload failed. Check product image storage setup."},upload.status);
+      return apiReply({image_url:env.SUPABASE_URL+"/storage/v1/object/public/product-images/"+objectPath},201);
+    }
     if(url.pathname==="/api/seller/products" && (request.method==="GET"||request.method==="POST")){
       if(!bearer.startsWith("Bearer ")) return apiReply({error:"Sign in first."},401);
       if(request.method==="GET"){
