@@ -1,22 +1,25 @@
-# Deployment setup
+# SUHAS deployment setup
+
+## Official public website
+The only official public-facing website and app URL is:
+
+https://suhasny.pages.dev
+
+Do not publish backend/API endpoints as alternate website links. They remain implementation details.
 
 ## 1. Supabase
-1. Create a Supabase project in the dashboard.
-2. Open SQL Editor and run `supabase/migrations/001_init.sql`.
-3. Save the Project URL and anon/public key.
-4. Do not put the service_role key in browser code, GitHub, or Worker variables.
+1. Open the Supabase project dashboard and SQL Editor.
+2. Run `supabase/migrations/001_init.sql` and then `002_security_hardening.sql`.
+3. Store the project URL and anon/publishable key in the appropriate Cloudflare configuration.
+4. Never put the service_role key in browser code, GitHub, or public frontend variables.
 
 ## 2. Cloudflare Worker
-1. Install Node.js LTS locally and run `npm install`.
-2. Run `npx wrangler login` and complete Cloudflare authorization.
-3. Set secrets: `npx wrangler secret put SUPABASE_URL` and `npx wrangler secret put SUPABASE_ANON_KEY`.
-4. Run `npm run dev` for local preview.
-5. Run `npm run deploy` to publish.
+1. The API Worker is `suhas-marketplace-api`.
+2. Configure `SUPABASE_ANON_KEY` as an encrypted Worker Secret.
+3. Keep backend/API addresses out of customer-facing navigation and documentation links.
+4. Deploy updates through the connected GitHub/Cloudflare workflow.
 
-## 3. Custom domain
-Add the domain in Cloudflare only after confirming ownership and DNS access. The desired public brand domain is SUHAS.COM; domain registration itself is not guaranteed free.
-
-## 4. Required before production
+## 3. Required before production
 - Complete server-side checkout using a transactional database function.
 - Never trust client-submitted product prices or totals.
 - Add authenticated seller/admin workflows and strict role provisioning.
