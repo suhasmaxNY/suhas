@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f36b21">
+  <meta name="description" content="SUHAS.COM — Discover everyday essentials from independent sellers across Bangladesh.">
+  <title>SUHAS.COM — Shop smarter</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="topline"><span data-i18n="topline">Bangladesh-wide delivery · Secure shopping · Seller marketplace</span><button id="languageToggle" class="language">বাংলা</button></div>
+  <header class="header">
+    <a class="brand" href="/" aria-label="SUHAS home"><span class="brand-mark">S</span><span>SUHAS<span class="brand-dot">.</span><small>MARKETPLACE</small></span></a>
+    <form id="searchForm" class="search"><input id="searchInput" aria-label="Search products" placeholder="Search products, brands and more"><button aria-label="Search">⌕</button></form>
+    <nav class="header-actions"><a href="#categories" data-i18n="categories">Categories</a><a href="#seller" data-i18n="sell">Become a seller</a><button id="cartOpen" class="cart-button">Bag <b id="cartCount">0</b></button></nav>
+  </header>
+  <main>
+    <section class="hero">
+      <div class="hero-copy"><p class="eyebrow" data-i18n="heroEyebrow">A better way to shop</p><h1 data-i18n="heroTitle">Good finds.<br><em>Great everyday.</em></h1><p data-i18n="heroText">Explore thoughtful picks from growing local businesses and trusted sellers.</p><a class="primary-button" href="#products" data-i18n="shopNow">Explore products <span>→</span></a><div class="hero-note"><span class="pulse"></span><span data-i18n="heroNote">Made for Bangladesh. Ready for everywhere.</span></div></div>
+      <div class="hero-art" aria-label="Decorative product showcase"><div class="sun"></div><div class="art-card art-card-one"><span>01 / DAILY</span><div class="art-bag">S</div><b>Everyday<br>essentials</b></div><div class="art-card art-card-two"><span>02 / STYLE</span><div class="art-orb"></div><b>Find your<br>new favourite</b></div><div class="art-sticker">GOOD<br>THINGS<br>LIVE HERE</div></div>
+    </section>
+    <section class="trust-row"><div><b>01</b><span data-i18n="trust1">Curated local sellers</span></div><div><b>02</b><span data-i18n="trust2">Clear product details</span></div><div><b>03</b><span data-i18n="trust3">Convenient checkout</span></div><div><b>04</b><span data-i18n="trust4">Growing with you</span></div></section>
+    <section id="categories" class="section"><div class="section-heading"><div><p class="eyebrow" data-i18n="browse">FIND YOUR NEXT FAVOURITE</p><h2 data-i18n="categoryTitle">Shop by category</h2></div><a href="#products" class="text-link" data-i18n="viewAll">View all products ↗</a></div><div id="categoryGrid" class="category-grid"></div></section>
+    <section id="products" class="section products-section"><div class="section-heading"><div><p class="eyebrow" data-i18n="JUST_FOR_YOU">THE GOOD STUFF</p><h2 data-i18n="productTitle">Popular right now</h2></div><span class="demo-label">SAMPLE CATALOGUE</span></div><div class="filters"><div id="filterChips" class="chips"></div><select id="sortSelect" aria-label="Sort products"><option value="featured">Featured</option><option value="low">Price: low to high</option><option value="high">Price: high to low</option></select></div><div id="productGrid" class="product-grid"></div><p id="emptyState" class="empty" hidden>No products found. Try another search.</p></section>
+    <section id="seller" class="seller-banner"><div><p class="eyebrow">GROW WITH SUHAS</p><h2 data-i18n="sellerTitle">Your business deserves<br>a bigger stage.</h2><p data-i18n="sellerText">Bring your products to a marketplace built to help local businesses reach more customers.</p></div><a class="light-button" href="mailto:sellers@suhas.com?subject=SUHAS%20Seller%20Enquiry" data-i18n="sellerCta">Start selling ↗</a></section>
+  </main>
+  <footer><a class="brand footer-brand" href="/"><span class="brand-mark">S</span><span>SUHAS<span class="brand-dot">.</span><small>MARKETPLACE</small></span></a><p>© <span id="year"></span> SUHAS.COM. <span data-i18n="footer">A marketplace for better everyday finds.</span></p><div><a href="mailto:hello@suhas.com">Contact</a><a href="#seller">Sell on SUHAS</a></div></footer>
+  <div id="cartDrawer" class="drawer-backdrop" hidden><aside class="drawer" aria-label="Shopping bag"><div class="drawer-head"><h2>Your bag</h2><button id="cartClose" class="icon-button" aria-label="Close bag">×</button></div><div id="cartItems"></div><div class="cart-bottom"><div class="total-line"><span>Subtotal</span><b id="cartTotal">৳0</b></div><p class="cart-hint">Delivery and payment options are confirmed at checkout.</p><button id="checkoutButton" class="primary-button full">Continue to checkout →</button></div></aside></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js" defer></script>
+</body>
+</html>
