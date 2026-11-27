@@ -1,4 +1,4 @@
-const CACHE="suhas-pwa-v8";
+const CACHE="suhas-pwa-v9";
 const SHELL=["/","/ai/","/styles.css?v=20261127-marketplace2","/app.js?v=20261127-marketplace2","/ai/style.css?v=4","/ai/app.js?v=7","/manifest.webmanifest","/icon.svg"];
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)))});
 self.addEventListener("message",event=>{if(event.data==="SUHAS_SKIP_WAITING")self.skipWaiting()});
