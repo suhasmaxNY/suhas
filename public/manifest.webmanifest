@@ -1,0 +1,18 @@
+{
+  "id": "/",
+  "name": "SUHAS.COM — Bangladesh Marketplace",
+  "short_name": "SUHAS",
+  "description": "Shop on SUHAS, discover products and chat with SUHAS AI.",
+  "lang": "en-BD",
+  "start_url": "/?source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait-primary",
+  "background_color": "#ffffff",
+  "theme_color": "#f85606",
+  "categories": ["shopping"],
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
